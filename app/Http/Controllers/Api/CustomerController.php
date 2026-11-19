@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Mail\ActionMail;
 use App\Models\Customer;
+use App\Services\AdminNotificationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -68,6 +69,8 @@ class CustomerController extends Controller
             "Hello {$customer->contact_person_name},\n\nYour customer account for {$customer->company_name} has been created.\n\nEmail: {$customer->email}\nTemporary password: {$temporaryPassword}\n\nPlease keep these credentials secure.",
         ));
 
+        AdminNotificationService::create($request->user()->id, 'customer_created', 'Customer Added', "Customer {$customer->company_name} was added.", 'customer', $customer->id);
+
         return response()->json(['success' => true, 'message' => 'Customer created successfully.', 'data' => $customer], 201);
     }
 
@@ -95,6 +98,8 @@ class CustomerController extends Controller
 
         $record->update($validated);
 
+        AdminNotificationService::create($request->user()->id, 'customer_updated', 'Customer Updated', "Customer {$record->company_name} was updated.", 'customer', $record->id);
+
         return response()->json([
             'success' => true,
             'message' => 'Customer updated successfully.',
@@ -105,7 +110,10 @@ class CustomerController extends Controller
     public function destroy(Request $request, int $customer): JsonResponse
     {
         $record = $this->baseQuery($request)->findOrFail($customer);
+        $name = $record->company_name;
+        $id = $record->id;
         $record->delete();
+        AdminNotificationService::create($request->user()->id, 'customer_deleted', 'Customer Deleted', "Customer {$name} was deleted.", 'customer', $id);
 
         return response()->json(['success' => true, 'message' => 'Customer deleted successfully.']);
     }

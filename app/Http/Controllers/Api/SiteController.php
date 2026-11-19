@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\ActionMail;
 use App\Models\Customer;
 use App\Models\Site;
+use App\Services\AdminNotificationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -63,6 +64,8 @@ class SiteController extends Controller
             "Hello {$site->customer->contact_person_name},\n\nA new site has been added for {$site->customer->company_name}.\n\nSite: {$site->site_name}\nLocation: ".$this->siteLocation($site),
         ));
 
+        AdminNotificationService::create($request->user()->id, 'site_created', 'Site Added', "Site {$site->site_name} was added.", 'site', $site->id);
+
         return response()->json(['success' => true, 'message' => 'Site created successfully.', 'data' => $site], 201);
     }
 
@@ -90,6 +93,8 @@ class SiteController extends Controller
 
         $record->update($validated);
 
+        AdminNotificationService::create($request->user()->id, 'site_updated', 'Site Updated', "Site {$record->site_name} was updated.", 'site', $record->id);
+
         return response()->json([
             'success' => true,
             'message' => 'Site updated successfully.',
@@ -100,7 +105,10 @@ class SiteController extends Controller
     public function destroy(Request $request, int $site): JsonResponse
     {
         $record = $this->baseQuery($request)->findOrFail($site);
+        $name = $record->site_name;
+        $id = $record->id;
         $record->delete();
+        AdminNotificationService::create($request->user()->id, 'site_deleted', 'Site Deleted', "Site {$name} was deleted.", 'site', $id);
 
         return response()->json(['success' => true, 'message' => 'Site deleted successfully.']);
     }

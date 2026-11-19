@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use App\Mail\ActionMail;
 use App\Models\Customer;
 use App\Models\OneTimePassword;
+use App\Models\Staff;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AdminApiTest extends TestCase
@@ -177,5 +179,78 @@ class AdminApiTest extends TestCase
         $this->withToken($second->json('data.token'))
             ->getJson('/api/admin/customers/'.$customer->json('data.id'))
             ->assertNotFound();
+    }
+
+    public function test_admin_can_manage_equipment_certificates_staff_dashboard_and_notifications(): void
+    {
+        Storage::fake('public');
+        $signup = $this->postJson('/api/admin/auth/signup', [
+            'name' => 'Admin', 'email' => 'admin@example.com', 'phone' => '9000000010',
+            'password' => 'Password123', 'password_confirmation' => 'Password123',
+        ]);
+        $token = $signup->json('data.token');
+
+        $customer = $this->withToken($token)->postJson('/api/admin/customers', [
+            'company_name' => 'Equipment Owner', 'contact_person_name' => 'Owner',
+            'email' => 'owner@example.com', 'mobile_number' => '9000000011',
+            'billing_address' => 'Pune',
+        ]);
+        $site = $this->withToken($token)->postJson('/api/admin/sites', [
+            'customer_id' => $customer->json('data.id'), 'site_name' => 'MIDC Plant',
+            'email' => 'site@example.com',
+        ]);
+
+        $equipment = $this->withToken($token)->postJson('/api/admin/equipment', [
+            'site_id' => $site->json('data.id'), 'name' => 'Chain Pulley Block',
+            'short_name' => 'CPB', 'manufacturer' => 'Demag', 'model' => 'DM-5',
+            'serial_number' => 'SN-12345', 'equipment_code' => 'EQ-001',
+            'rated_capacity' => '5 Ton', 'swl_capacity' => '4.5 Ton',
+            'certificate_issued_at' => '2026-11-19', 'certificate_expires_at' => '2027-11-19',
+            'status' => 'active',
+        ])->assertCreated()
+            ->assertJsonPath('data.certificates.0.certificate_number', 'ASTA-202611-000001')
+            ->assertJsonStructure(['data' => ['certificates' => [['file_url']]]]);
+        $equipmentId = $equipment->json('data.id');
+        Storage::disk('public')->assertExists($equipment->json('data.certificates.0.file_path'));
+
+        Mail::assertSent(ActionMail::class, fn (ActionMail $mail): bool => $mail->hasTo('site@example.com') && $mail->subjectLine === 'Equipment Certificate Generated' && $mail->attachmentPath !== null);
+
+        $this->withToken($token)->getJson('/api/admin/sites/'.$site->json('data.id'))
+            ->assertOk()->assertJsonPath('data.equipments.0.id', $equipmentId);
+        $this->withToken($token)->getJson('/api/admin/equipment/'.$equipmentId)
+            ->assertOk()->assertJsonPath('data.certificates.0.file_url', $equipment->json('data.certificates.0.file_url'));
+        $this->withToken($token)->getJson('/api/admin/equipment/'.$equipmentId.'/certificates')->assertOk()->assertJsonCount(1, 'data.data');
+        $this->withToken($token)->patchJson('/api/admin/equipment/'.$equipmentId, ['remarks' => 'Updated'])->assertOk()->assertJsonPath('data.remarks', 'Updated');
+
+        $staff = $this->withToken($token)->postJson('/api/admin/staff', [
+            'full_name' => 'Tushar Patil', 'email' => 'tushar@example.com',
+            'mobile_number' => '9000000012', 'employee_id' => 'INS-001',
+            'role' => 'inspector', 'status' => 'active',
+        ])->assertCreated();
+        $staffId = $staff->json('data.id');
+        $this->assertTrue(Hash::check('tusharpatil@123', Staff::findOrFail($staffId)->password));
+        Mail::assertSent(ActionMail::class, fn (ActionMail $mail): bool => $mail->hasTo('tushar@example.com') && str_contains($mail->body, 'tusharpatil@123'));
+
+        $this->withToken($token)->getJson('/api/admin/staff?role=inspector&status=active')->assertOk()->assertJsonPath('data.data.0.id', $staffId);
+        $this->withToken($token)->getJson('/api/admin/staff/search?q=INS-001')->assertOk()->assertJsonPath('data.data.0.id', $staffId);
+        $this->withToken($token)->getJson('/api/admin/staff/'.$staffId)->assertOk();
+        $this->withToken($token)->patchJson('/api/admin/staff/'.$staffId, ['mobile_number' => '9000000013'])->assertOk();
+
+        $this->withToken($token)->getJson('/api/admin/dashboard/counts')->assertOk()
+            ->assertJsonPath('data.counts.total_customers', 1)
+            ->assertJsonPath('data.counts.active_sites', 1)
+            ->assertJsonPath('data.counts.total_equipment', 1)
+            ->assertJsonPath('data.counts.total_certificates', 1)
+            ->assertJsonPath('data.counts.field_engineers', 1);
+
+        $notifications = $this->withToken($token)->getJson('/api/admin/notifications')->assertOk();
+        $notificationId = $notifications->json('data.data.0.id');
+        $this->withToken($token)->getJson('/api/admin/notifications/'.$notificationId)->assertOk();
+        $this->withToken($token)->patchJson('/api/admin/notifications/'.$notificationId.'/read')->assertOk()->assertJsonPath('data.is_read', true);
+        $this->withToken($token)->patchJson('/api/admin/notifications/read-all')->assertOk();
+        $this->withToken($token)->getJson('/api/admin/notifications?unread_only=1')->assertOk()->assertJsonCount(0, 'data.data');
+
+        $this->withToken($token)->deleteJson('/api/admin/staff/'.$staffId)->assertOk();
+        $this->withToken($token)->deleteJson('/api/admin/equipment/'.$equipmentId)->assertOk();
     }
 }

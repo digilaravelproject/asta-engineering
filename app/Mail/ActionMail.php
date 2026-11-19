@@ -13,10 +13,18 @@ class ActionMail extends Mailable
     public function __construct(
         public string $subjectLine,
         public string $body,
+        public ?string $attachmentPath = null,
+        public ?string $attachmentName = null,
     ) {}
 
     public function build(): self
     {
-        return $this->subject($this->subjectLine)->view('emails.action');
+        $mail = $this->subject($this->subjectLine)->view('emails.action');
+
+        if ($this->attachmentPath) {
+            $mail->attachFromStorageDisk('public', $this->attachmentPath, $this->attachmentName);
+        }
+
+        return $mail;
     }
 }

@@ -57,4 +57,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(Customer::class, 'admin_id');
     }
+
+    public function staff()
+    {
+        return $this->hasMany(Staff::class, 'admin_id');
+    }
+
+    public function adminNotifications()
+    {
+        return $this->hasMany(AdminNotification::class, 'admin_id');
+    }
 }

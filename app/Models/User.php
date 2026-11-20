@@ -22,6 +22,10 @@ class User extends Authenticatable
         'name',
         'email',
         'phone',
+        'profile_image_path',
+        'language',
+        'push_notifications',
+        'biometric_lock',
         'password',
     ];
 
@@ -45,6 +49,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'push_notifications' => 'boolean',
+            'biometric_lock' => 'boolean',
         ];
     }
 
@@ -66,5 +72,10 @@ class User extends Authenticatable
     public function adminNotifications()
     {
         return $this->hasMany(AdminNotification::class, 'admin_id');
+    }
+
+    public function checkpoints()
+    {
+        return $this->hasMany(Checkpoint::class, 'admin_id');
     }
 }

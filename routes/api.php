@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CheckpointController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SiteController;
 use App\Http\Controllers\Api\StaffController;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +25,13 @@ Route::prefix('admin')->group(function (): void {
     });
 
     Route::middleware('api.token')->group(function (): void {
+        Route::get('profile', [ProfileController::class, 'show']);
+        Route::match(['put', 'patch'], 'profile', [ProfileController::class, 'update']);
+        Route::post('auth/logout', [AuthController::class, 'logout']);
+
+        Route::get('checkpoints/search', [CheckpointController::class, 'search']);
+        Route::apiResource('checkpoints', CheckpointController::class);
+
         Route::get('customers/search', [CustomerController::class, 'search']);
         Route::apiResource('customers', CustomerController::class);
 

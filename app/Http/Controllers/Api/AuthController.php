@@ -73,6 +73,16 @@ class AuthController extends Controller
         ]);
     }
 
+    public function logout(Request $request): JsonResponse
+    {
+        $request->attributes->get('api_token')->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Logged out successfully.',
+        ]);
+    }
+
     public function forgotPassword(Request $request): JsonResponse
     {
         $email = $this->validatedEmail($request);

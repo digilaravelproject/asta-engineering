@@ -518,6 +518,110 @@ curl --request GET 'http://localhost/asta-engineering/public/api/admin/notificat
   --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
 ```
 
+## 38. Get logged-in admin profile and preferences
+
+```bash
+curl --request GET 'http://localhost/asta-engineering/public/api/admin/profile' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
+## 39. Update admin profile picture and preferences
+
+Use a locale code such as `en-US`, `en-IN`, `hi-IN`, or `mr-IN` for `language`.
+
+```bash
+curl --request POST 'http://localhost/asta-engineering/public/api/admin/profile' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE' \
+  --form '_method=PATCH' \
+  --form 'profile_image=@C:/full/path/profile.jpg' \
+  --form 'language=en-IN' \
+  --form 'push_notifications=1' \
+  --form 'biometric_lock=1'
+```
+
+## 40. Add checkpoint
+
+Supported input types are `radio`, `text`, `number`, `dropdown`, and `date`.
+The server creates the `checkpoint_code` automatically.
+
+```bash
+curl --request POST 'http://localhost/asta-engineering/public/api/admin/checkpoints' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+    "name": "Visual Inspection of Wire Ropes",
+    "equipment_category": "Lifting Tools",
+    "input_type": "radio",
+    "is_mandatory": true,
+    "requires_failure_photo": true
+  }'
+```
+
+## 41. Search checkpoints
+
+Searches checkpoint code, name, and equipment category. The same optional
+filters as the list API can also be supplied.
+
+```bash
+curl --request GET 'http://localhost/asta-engineering/public/api/admin/checkpoints/search?q=wire&per_page=15' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
+## 42. Checkpoint list
+
+Optional filters: `equipment_category`, `input_type`, and `is_mandatory`.
+
+```bash
+curl --request GET 'http://localhost/asta-engineering/public/api/admin/checkpoints?equipment_category=Lifting%20Tools&input_type=radio&per_page=15&page=1' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
+## 43. Get checkpoint by ID
+
+```bash
+curl --request GET 'http://localhost/asta-engineering/public/api/admin/checkpoints/1' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
+## 44. Update checkpoint
+
+```bash
+curl --request PATCH 'http://localhost/asta-engineering/public/api/admin/checkpoints/1' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+    "name": "Updated Wire Rope Inspection",
+    "input_type": "text",
+    "is_mandatory": false
+  }'
+```
+
+## 45. Delete checkpoint
+
+```bash
+curl --request DELETE 'http://localhost/asta-engineering/public/api/admin/checkpoints/1' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
+## 46. Logout admin
+
+This revokes the Bearer token used for this request. Other logged-in devices
+remain signed in.
+
+```bash
+curl --request POST 'http://localhost/asta-engineering/public/api/admin/auth/logout' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
 ## Required one-time local setup
 
 ```bash

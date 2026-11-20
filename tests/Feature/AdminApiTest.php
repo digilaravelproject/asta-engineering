@@ -209,6 +209,7 @@ class AdminApiTest extends TestCase
             'status' => 'active',
         ])->assertCreated()
             ->assertJsonPath('data.certificates.0.certificate_number', 'ASTA-202611-000001')
+            ->assertJsonPath('data.certificate_url', fn (string $url): bool => str_ends_with($url, '.pdf'))
             ->assertJsonStructure(['data' => ['certificates' => [['file_url']]]]);
         $equipmentId = $equipment->json('data.id');
         Storage::disk('public')->assertExists($equipment->json('data.certificates.0.file_path'));

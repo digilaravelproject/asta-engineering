@@ -303,9 +303,10 @@ be replaced with IDs returned by the create/list APIs.
 
 ## 21. Add equipment and create certificate
 
-If `certificate_file` is omitted, the API automatically generates a PDF
-certificate. If supplied, it may be a PDF, JPG, JPEG, or PNG up to 10 MB. The
-certificate is attached to the site owner email and its public URL is returned.
+The API always generates the PDF certificate automatically. No certificate file
+is accepted or required. The certificate is attached to the site owner email,
+and the create response returns its direct URL in `data.certificate_url` as well
+as in `data.certificates[0].file_url`.
 
 ```bash
 curl --request POST 'http://localhost/asta-engineering/public/api/admin/equipment' \
@@ -328,12 +329,6 @@ curl --request POST 'http://localhost/asta-engineering/public/api/admin/equipmen
   --form 'certificate_issued_at=2026-11-19' \
   --form 'certificate_expires_at=2027-11-19' \
   --form 'status=active'
-```
-
-To upload an existing certificate, append:
-
-```bash
-  --form 'certificate_file=@C:/full/path/certificate.pdf'
 ```
 
 ## 22. Site details with equipment data

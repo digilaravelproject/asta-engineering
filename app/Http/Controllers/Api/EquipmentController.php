@@ -27,9 +27,7 @@ class EquipmentController extends Controller
             $equipment = Equipment::create($validated)->load('site.customer');
             $number = $request->input('certificate_number') ?: 'ASTA-'.now()->format('Ym').'-'.str_pad((string) $equipment->id, 6, '0', STR_PAD_LEFT);
             $issuedAt = $request->input('certificate_issued_at', now()->toDateString());
-            $path = $request->hasFile('certificate_file')
-                ? $request->file('certificate_file')->store('equipment-certificates/'.now()->format('Y/m'), 'public')
-                : CertificatePdfService::generate($equipment, $number, $issuedAt);
+            $path = CertificatePdfService::generate($equipment, $number, $issuedAt);
 
             $certificate = $equipment->certificates()->create([
                 'certificate_number' => $number,
@@ -47,7 +45,7 @@ class EquipmentController extends Controller
             'Equipment Certificate Generated',
             "Hello {$site->customer->contact_person_name},\n\nEquipment {$equipment->name} ({$equipment->equipment_code}) was added at {$site->site_name}.\n\nCertificate: {$certificate->file_url}",
             $certificate->file_path,
-            $certificate->certificate_number.'.'.pathinfo($certificate->file_path, PATHINFO_EXTENSION),
+            $certificate->certificate_number.'.pdf',
         ));
 
         AdminNotificationService::create(
@@ -56,10 +54,13 @@ class EquipmentController extends Controller
             'equipment', $equipment->id, ['certificate_id' => $certificate->id, 'certificate_url' => $certificate->file_url],
         );
 
+        $responseEquipment = $equipment->fresh()->load(['site.customer', 'certificates']);
+        $responseEquipment->setAttribute('certificate_url', $certificate->file_url);
+
         return response()->json([
             'success' => true,
             'message' => 'Equipment and certificate created successfully. Certificate email sent.',
-            'data' => $equipment->fresh()->load(['site.customer', 'certificates']),
+            'data' => $responseEquipment,
         ], 201);
     }
 
@@ -140,7 +141,6 @@ class EquipmentController extends Controller
             'next_inspection_at' => ['nullable', 'date'],
             'is_active' => ['sometimes', 'boolean'],
             'status' => ['sometimes', Rule::in(['active', 'inactive'])],
-            'certificate_file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
             'certificate_number' => ['nullable', 'string', 'max:100'],
             'certificate_title' => ['nullable', 'string', 'max:150'],
             'certificate_issued_at' => ['nullable', 'date'],

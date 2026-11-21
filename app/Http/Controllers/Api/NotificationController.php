@@ -43,6 +43,12 @@ class NotificationController extends Controller
 
     private function baseQuery(Request $request): Builder
     {
-        return AdminNotification::query()->where('admin_id', $request->user()->id);
+        return match ($request->attributes->get('account_type', 'admin')) {
+            'inspector' => AdminNotification::query()->where('staff_id', $request->user()->id),
+            'user' => AdminNotification::query()->where('customer_id', $request->user()->id),
+            default => AdminNotification::query()
+                ->where('admin_id', $request->attributes->get('admin_id', $request->user()->id))
+                ->whereNull('staff_id')->whereNull('customer_id'),
+        };
     }
 }

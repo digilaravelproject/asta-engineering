@@ -7,6 +7,7 @@ use App\Models\AdminNotification;
 use App\Models\Customer;
 use App\Models\Equipment;
 use App\Models\EquipmentCertificate;
+use App\Models\Inspection;
 use App\Models\Site;
 use App\Models\Staff;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,7 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
-        $adminId = $request->user()->id;
+        $adminId = $request->attributes->get('admin_id');
         $customerIds = Customer::where('admin_id', $adminId)->select('id');
         $siteIds = Site::whereIn('customer_id', $customerIds)->select('id');
         $equipmentIds = Equipment::whereIn('site_id', $siteIds)->select('id');
@@ -32,11 +33,11 @@ class DashboardController extends Controller
             'field_engineers' => Staff::where('admin_id', $adminId)->where('role', 'inspector')->where('is_active', true)->count(),
             'renewals_pending' => EquipmentCertificate::whereIn('equipment_id', clone $equipmentIds)->whereDate('expires_at', '>=', now()->toDateString())->whereDate('expires_at', '<=', $dueDate)->count(),
             'total_users' => Staff::where('admin_id', $adminId)->count(),
-            'inspections' => 0,
-            'unread_notifications' => AdminNotification::where('admin_id', $adminId)->whereNull('read_at')->count(),
+            'inspections' => Inspection::where('admin_id', $adminId)->count(),
+            'unread_notifications' => AdminNotification::where('admin_id', $adminId)->whereNull('staff_id')->whereNull('customer_id')->whereNull('read_at')->count(),
         ];
 
-        $recentFeed = AdminNotification::where('admin_id', $adminId)->latest()->limit(10)->get();
+        $recentFeed = AdminNotification::where('admin_id', $adminId)->whereNull('staff_id')->whereNull('customer_id')->latest()->limit(10)->get();
 
         return response()->json(['success' => true, 'data' => ['counts' => $counts, 'recent_feed' => $recentFeed]]);
     }

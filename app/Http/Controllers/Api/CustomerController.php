@@ -53,7 +53,7 @@ class CustomerController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $this->validateCustomer($request);
-        $validated['admin_id'] = $request->user()->id;
+        $validated['admin_id'] = $request->attributes->get('admin_id');
         $validated['is_active'] = $this->activeValue($request);
         $temporaryPassword = explode('@', $validated['email'], 2)[0].'@123';
         $validated['password'] = Hash::make($temporaryPassword);
@@ -69,7 +69,7 @@ class CustomerController extends Controller
             "Hello {$customer->contact_person_name},\n\nYour customer account for {$customer->company_name} has been created.\n\nEmail: {$customer->email}\nTemporary password: {$temporaryPassword}\n\nPlease keep these credentials secure.",
         ));
 
-        AdminNotificationService::create($request->user()->id, 'customer_created', 'Customer Added', "Customer {$customer->company_name} was added.", 'customer', $customer->id);
+        AdminNotificationService::create($request->attributes->get('admin_id'), 'customer_created', 'Customer Added', "Customer {$customer->company_name} was added.", 'customer', $customer->id);
 
         return response()->json(['success' => true, 'message' => 'Customer created successfully.', 'data' => $customer], 201);
     }
@@ -98,7 +98,7 @@ class CustomerController extends Controller
 
         $record->update($validated);
 
-        AdminNotificationService::create($request->user()->id, 'customer_updated', 'Customer Updated', "Customer {$record->company_name} was updated.", 'customer', $record->id);
+        AdminNotificationService::create($request->attributes->get('admin_id'), 'customer_updated', 'Customer Updated', "Customer {$record->company_name} was updated.", 'customer', $record->id);
 
         return response()->json([
             'success' => true,
@@ -113,20 +113,20 @@ class CustomerController extends Controller
         $name = $record->company_name;
         $id = $record->id;
         $record->delete();
-        AdminNotificationService::create($request->user()->id, 'customer_deleted', 'Customer Deleted', "Customer {$name} was deleted.", 'customer', $id);
+        AdminNotificationService::create($request->attributes->get('admin_id'), 'customer_deleted', 'Customer Deleted', "Customer {$name} was deleted.", 'customer', $id);
 
         return response()->json(['success' => true, 'message' => 'Customer deleted successfully.']);
     }
 
     private function baseQuery(Request $request): Builder
     {
-        return Customer::query()->where('admin_id', $request->user()->id);
+        return Customer::query()->where('admin_id', $request->attributes->get('admin_id'));
     }
 
     private function validateCustomer(Request $request, ?Customer $customer = null, bool $partial = false): array
     {
         $presence = $partial ? 'sometimes' : 'required';
-        $adminId = $request->user()->id;
+        $adminId = $request->attributes->get('admin_id');
 
         return $request->validate([
             'company_name' => [$presence, 'string', 'max:150'],

@@ -49,7 +49,7 @@ class EquipmentController extends Controller
         ));
 
         AdminNotificationService::create(
-            $request->user()->id, 'certificate_generated', 'Certificate Generated',
+            $request->attributes->get('admin_id'), 'certificate_generated', 'Certificate Generated',
             "Certificate for equipment {$equipment->equipment_code} was generated and sent to {$recipient}.",
             'equipment', $equipment->id, ['certificate_id' => $certificate->id, 'certificate_url' => $certificate->file_url],
         );
@@ -84,7 +84,7 @@ class EquipmentController extends Controller
         $record->update($validated);
 
         AdminNotificationService::create(
-            $request->user()->id, 'equipment_updated', 'Equipment Updated',
+            $request->attributes->get('admin_id'), 'equipment_updated', 'Equipment Updated',
             "Equipment {$record->name} was updated.", 'equipment', $record->id,
         );
 
@@ -97,7 +97,7 @@ class EquipmentController extends Controller
         $name = $record->name;
         $id = $record->id;
         $record->delete();
-        AdminNotificationService::create($request->user()->id, 'equipment_deleted', 'Equipment Deleted', "Equipment {$name} was deleted.", 'equipment', $id);
+        AdminNotificationService::create($request->attributes->get('admin_id'), 'equipment_deleted', 'Equipment Deleted', "Equipment {$name} was deleted.", 'equipment', $id);
 
         return response()->json(['success' => true, 'message' => 'Equipment deleted successfully.']);
     }
@@ -113,12 +113,12 @@ class EquipmentController extends Controller
 
     private function baseQuery(Request $request): Builder
     {
-        return Equipment::query()->whereHas('site.customer', fn (Builder $query) => $query->where('admin_id', $request->user()->id));
+        return Equipment::query()->whereHas('site.customer', fn (Builder $query) => $query->where('admin_id', $request->attributes->get('admin_id')));
     }
 
     private function ownedSite(Request $request, int $siteId): Site
     {
-        return Site::with('customer')->whereHas('customer', fn (Builder $query) => $query->where('admin_id', $request->user()->id))->findOrFail($siteId);
+        return Site::with('customer')->whereHas('customer', fn (Builder $query) => $query->where('admin_id', $request->attributes->get('admin_id')))->findOrFail($siteId);
     }
 
     private function validateEquipment(Request $request, ?Equipment $equipment = null, bool $partial = false): array

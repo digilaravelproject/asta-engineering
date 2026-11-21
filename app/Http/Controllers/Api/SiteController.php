@@ -64,7 +64,7 @@ class SiteController extends Controller
             "Hello {$site->customer->contact_person_name},\n\nA new site has been added for {$site->customer->company_name}.\n\nSite: {$site->site_name}\nLocation: ".$this->siteLocation($site),
         ));
 
-        AdminNotificationService::create($request->user()->id, 'site_created', 'Site Added', "Site {$site->site_name} was added.", 'site', $site->id);
+        AdminNotificationService::create($request->attributes->get('admin_id'), 'site_created', 'Site Added', "Site {$site->site_name} was added.", 'site', $site->id);
 
         return response()->json(['success' => true, 'message' => 'Site created successfully.', 'data' => $site], 201);
     }
@@ -93,7 +93,7 @@ class SiteController extends Controller
 
         $record->update($validated);
 
-        AdminNotificationService::create($request->user()->id, 'site_updated', 'Site Updated', "Site {$record->site_name} was updated.", 'site', $record->id);
+        AdminNotificationService::create($request->attributes->get('admin_id'), 'site_updated', 'Site Updated', "Site {$record->site_name} was updated.", 'site', $record->id);
 
         return response()->json([
             'success' => true,
@@ -108,19 +108,19 @@ class SiteController extends Controller
         $name = $record->site_name;
         $id = $record->id;
         $record->delete();
-        AdminNotificationService::create($request->user()->id, 'site_deleted', 'Site Deleted', "Site {$name} was deleted.", 'site', $id);
+        AdminNotificationService::create($request->attributes->get('admin_id'), 'site_deleted', 'Site Deleted', "Site {$name} was deleted.", 'site', $id);
 
         return response()->json(['success' => true, 'message' => 'Site deleted successfully.']);
     }
 
     private function baseQuery(Request $request): Builder
     {
-        return Site::query()->whereHas('customer', fn (Builder $query) => $query->where('admin_id', $request->user()->id));
+        return Site::query()->whereHas('customer', fn (Builder $query) => $query->where('admin_id', $request->attributes->get('admin_id')));
     }
 
     private function ownedCustomer(Request $request, int $customerId): Customer
     {
-        return Customer::where('admin_id', $request->user()->id)->findOrFail($customerId);
+        return Customer::where('admin_id', $request->attributes->get('admin_id'))->findOrFail($customerId);
     }
 
     private function validateSite(Request $request, bool $partial = false): array

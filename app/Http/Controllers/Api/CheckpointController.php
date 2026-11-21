@@ -56,7 +56,7 @@ class CheckpointController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $this->validateCheckpoint($request);
-        $validated['admin_id'] = $request->user()->id;
+        $validated['admin_id'] = $request->attributes->get('admin_id');
 
         $checkpoint = DB::transaction(function () use ($validated): Checkpoint {
             $checkpoint = Checkpoint::create($validated);
@@ -104,7 +104,7 @@ class CheckpointController extends Controller
 
     private function baseQuery(Request $request): Builder
     {
-        return Checkpoint::query()->where('admin_id', $request->user()->id);
+        return Checkpoint::query()->where('admin_id', $request->attributes->get('admin_id'));
     }
 
     private function filteredQuery(Request $request): Builder

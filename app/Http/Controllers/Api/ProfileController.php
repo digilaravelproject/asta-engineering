@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
+use App\Models\Staff;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,10 +14,7 @@ class ProfileController extends Controller
 {
     public function show(Request $request): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'data' => $this->profileData($request->user()),
-        ]);
+        return response()->json(['success' => true, 'data' => $this->profileData($request)]);
     }
 
     public function update(Request $request): JsonResponse
@@ -26,20 +25,25 @@ class ProfileController extends Controller
             'push_notifications' => ['sometimes', 'boolean'],
             'biometric_lock' => ['sometimes', 'boolean'],
         ]);
-
-        /** @var User $user */
-        $user = $request->user();
+        $account = $request->user();
         $oldImage = null;
 
-        if ($request->hasFile('profile_image')) {
-            $oldImage = $user->profile_image_path;
-            $validated['profile_image_path'] = $request->file('profile_image')
-                ->store('admin-profile-images', 'public');
+        if ($account instanceof User) {
+            if ($request->hasFile('profile_image')) {
+                $oldImage = $account->profile_image_path;
+                $validated['profile_image_path'] = $request->file('profile_image')->store('admin-profile-images', 'public');
+            }
+            unset($validated['profile_image']);
+            $account->update($validated);
+        } elseif ($account instanceof Staff) {
+            if ($request->hasFile('profile_image')) {
+                $oldImage = $account->profile_image_path;
+                $account->update(['profile_image_path' => $request->file('profile_image')->store('staff-profile-images', 'public')]);
+            }
+        } elseif ($account instanceof Customer && $request->hasFile('profile_image')) {
+            $oldImage = $account->logo_path;
+            $account->update(['logo_path' => $request->file('profile_image')->store('customer-logos', 'public')]);
         }
-
-        unset($validated['profile_image']);
-
-        $user->update($validated);
 
         if ($oldImage) {
             Storage::disk('public')->delete($oldImage);
@@ -47,27 +51,31 @@ class ProfileController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Profile and preferences updated successfully.',
-            'data' => $this->profileData($user->refresh()),
+            'message' => 'Profile updated successfully.',
+            'data' => $this->profileData($request, $account->refresh()),
         ]);
     }
 
-    private function profileData(User $user): array
+    private function profileData(Request $request, User|Staff|Customer|null $account = null): array
     {
+        $account ??= $request->user();
+        $role = $request->attributes->get('account_type');
+        $imagePath = $account instanceof Customer ? $account->logo_path : $account->profile_image_path;
+
         return [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'phone' => $user->phone,
-            'profile_image_path' => $user->profile_image_path,
-            'profile_image_url' => $user->profile_image_path
-                ? Storage::disk('public')->url($user->profile_image_path)
-                : null,
-            'preferences' => [
-                'language' => $user->language,
-                'push_notifications' => $user->push_notifications,
-                'biometric_lock' => $user->biometric_lock,
-            ],
+            'id' => $account->id,
+            'role' => $role,
+            'name' => $account instanceof User ? $account->name : ($account instanceof Staff ? $account->full_name : $account->contact_person_name),
+            'email' => $account->email,
+            'phone' => $account instanceof User ? $account->phone : $account->mobile_number,
+            'profile_image_path' => $imagePath,
+            'profile_image_url' => $imagePath ? Storage::disk('public')->url($imagePath) : null,
+            'account' => $account,
+            'preferences' => $account instanceof User ? [
+                'language' => $account->language,
+                'push_notifications' => $account->push_notifications,
+                'biometric_lock' => $account->biometric_lock,
+            ] : null,
         ];
     }
 }

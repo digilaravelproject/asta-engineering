@@ -28,4 +28,9 @@ class Equipment extends Model
     {
         return $this->hasMany(EquipmentCertificate::class);
     }
+
+    public function inspections()
+    {
+        return $this->hasMany(Inspection::class);
+    }
 }

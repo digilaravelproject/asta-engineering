@@ -45,7 +45,7 @@ class StaffController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $this->validateStaff($request);
-        $validated['admin_id'] = $request->user()->id;
+        $validated['admin_id'] = $request->attributes->get('admin_id');
         $validated['is_active'] = $this->activeValue($request);
         $plainPassword = Str::lower(preg_replace('/[^A-Za-z0-9]/', '', $validated['full_name'])).'@123';
         $validated['password'] = $plainPassword;
@@ -58,7 +58,7 @@ class StaffController extends Controller
             'Your ASTA Engineering Staff Account',
             "Hello {$staff->full_name},\n\nYour {$staff->role} account was created.\n\nEmail: {$staff->email}\nPhone: {$staff->mobile_number}\nTemporary password: {$plainPassword}\n\nPlease keep these credentials secure.",
         ));
-        AdminNotificationService::create($request->user()->id, 'staff_created', 'Staff Added', "{$staff->full_name} was added as {$staff->role}.", 'staff', $staff->id);
+        AdminNotificationService::create($request->attributes->get('admin_id'), 'staff_created', 'Staff Added', "{$staff->full_name} was added as {$staff->role}.", 'staff', $staff->id);
 
         return response()->json(['success' => true, 'message' => 'Staff created successfully. Credentials email sent.', 'data' => $staff], 201);
     }
@@ -85,7 +85,7 @@ class StaffController extends Controller
             'Your ASTA Engineering Staff Profile Was Updated',
             "Hello {$record->full_name},\n\nYour staff profile was updated.\n\nEmail: {$record->email}\nPhone: {$record->mobile_number}\nRole: {$record->role}\nStatus: ".($record->is_active ? 'Active' : 'Inactive'),
         ));
-        AdminNotificationService::create($request->user()->id, 'staff_updated', 'Staff Updated', "{$record->full_name}'s staff profile was updated.", 'staff', $record->id);
+        AdminNotificationService::create($request->attributes->get('admin_id'), 'staff_updated', 'Staff Updated', "{$record->full_name}'s staff profile was updated.", 'staff', $record->id);
 
         return response()->json(['success' => true, 'message' => 'Staff updated successfully. Notification email sent.', 'data' => $record]);
     }
@@ -96,14 +96,14 @@ class StaffController extends Controller
         $name = $record->full_name;
         $id = $record->id;
         $record->delete();
-        AdminNotificationService::create($request->user()->id, 'staff_deleted', 'Staff Deleted', "Staff member {$name} was deleted.", 'staff', $id);
+        AdminNotificationService::create($request->attributes->get('admin_id'), 'staff_deleted', 'Staff Deleted', "Staff member {$name} was deleted.", 'staff', $id);
 
         return response()->json(['success' => true, 'message' => 'Staff deleted successfully.']);
     }
 
     private function baseQuery(Request $request): Builder
     {
-        return Staff::query()->where('admin_id', $request->user()->id);
+        return Staff::query()->where('admin_id', $request->attributes->get('admin_id'));
     }
 
     private function filteredQuery(Request $request): Builder
@@ -116,7 +116,7 @@ class StaffController extends Controller
     private function validateStaff(Request $request, ?Staff $staff = null, bool $partial = false): array
     {
         $presence = $partial ? 'sometimes' : 'required';
-        $adminId = $request->user()->id;
+        $adminId = $request->attributes->get('admin_id');
 
         return $request->validate([
             'full_name' => [$presence, 'string', 'max:150'],

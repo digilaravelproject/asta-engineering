@@ -298,7 +298,8 @@ provider to deliver real emails.
 
 # Equipment, Staff, Dashboard and Notification APIs
 
-All APIs below require the admin Bearer token. IDs in the examples (`1`) should
+All APIs below require a valid Bearer token from any logged-in role. Records are
+scoped to the logged-in account's organization. IDs in the examples (`1`) should
 be replaced with IDs returned by the create/list APIs.
 
 ## 21. Add equipment and create certificate
@@ -632,3 +633,186 @@ php artisan storage:link
 `storage:link` makes certificate and profile-image URLs accessible under
 `/public/storage`. Configure SMTP in `.env` for real email delivery; with the
 default `MAIL_MAILER=log`, emails are written to `storage/logs/laravel.log`.
+
+---
+
+# Shared Admin, Inspector and User Mobile APIs
+
+These endpoints use the same URL for all three roles. The Bearer token decides
+which records and dashboard fields are returned. `user` means the customer
+account created through the admin customer API. Do not send a role during login;
+the API identifies the account from `id` and the verified password. The `id`
+may be an email or mobile number, and may also be an employee ID for inspectors.
+
+## 47. Shared login - admin
+
+```bash
+curl --request POST 'http://localhost/asta-engineering/public/api/auth/login' \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+    "id": "admin@astaengineering.com",
+    "password": "Password123"
+  }'
+```
+
+## 48. Shared login - inspector
+
+Use the email/mobile and generated password returned when staff is created.
+
+```bash
+curl --request POST 'http://localhost/asta-engineering/public/api/auth/login' \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+    "id": "INS-001",
+    "password": "tusharpatil@123"
+  }'
+```
+
+## 49. Shared login - customer user
+
+Use the email/mobile and generated password returned when the customer is created.
+
+```bash
+curl --request POST 'http://localhost/asta-engineering/public/api/auth/login' \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+    "id": "info@arengineering.com",
+    "password": "info@123"
+  }'
+```
+
+The login response includes the detected role in both `data.role` and
+`data.user.role`. The complete user record is returned in `data.user`;
+`data.account` remains as a backward-compatible alias.
+
+## 49A. Get logged-in user and detected role
+
+```bash
+curl --request GET 'http://localhost/asta-engineering/public/api/me' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
+## 50. Assign an inspection/site to an inspector
+
+The response ID is the `inspection_id` used by the inspector status API.
+
+```bash
+curl --request POST 'http://localhost/asta-engineering/public/api/admin/inspections/assign' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+    "inspector_id": 1,
+    "site_id": 1,
+    "equipment_id": 1,
+    "scheduled_at": "2026-11-21 14:00:00",
+    "notes": "Annual statutory inspection"
+  }'
+```
+
+`equipment_id` and `notes` are optional. The inspector and site must belong to
+the logged-in admin, and the equipment must belong to the supplied site.
+
+## 51. Shared dashboard
+
+Use an admin, inspector, or user token with this same request. Admin keeps the
+existing admin counts. Inspector returns `pending_inspections`, `assigned_sites`,
+`completed_today`, `upcoming_renewals`, `unread_notifications`, and
+`recent_assignments`. User returns only counts for their customer account.
+
+```bash
+curl --request GET 'http://localhost/asta-engineering/public/api/admin/dashboard/counts' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
+`GET /api/dashboard` is also available as a shorter alias with the same response.
+
+## 52. Get assigned/accessible sites
+
+For inspectors this returns only sites having an inspection assigned to that
+inspector. Admin gets all owned sites; customer users get their own sites.
+
+```bash
+curl --request GET 'http://localhost/asta-engineering/public/api/sites/assigned?q=MIDC&per_page=15&page=1' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
+Remove `q=MIDC&` to list without a search term. Each item includes customer,
+location, contact fields, equipment count, and pending inspection count.
+
+## 53. Get role-scoped site details by ID
+
+The response contains site/customer/contact data, equipment with certificates,
+pending count, and the inspections visible to the logged-in role. Inaccessible
+site IDs return 404.
+
+```bash
+curl --request GET 'http://localhost/asta-engineering/public/api/sites/1' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
+## 54. Update assigned inspection status (inspector only)
+
+Allowed statuses are `in_progress` and `completed`. Completing an inspection
+automatically sets `completed_at`.
+
+```bash
+curl --request PATCH 'http://localhost/asta-engineering/public/api/inspections/1/status' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_INSPECTOR_BEARER_TOKEN_HERE' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+    "status": "completed",
+    "notes": "Inspection completed successfully"
+  }'
+```
+
+## 55. Shared notification list
+
+The same endpoint returns only notifications addressed to the logged-in admin,
+inspector, or customer user.
+
+```bash
+curl --request GET 'http://localhost/asta-engineering/public/api/notifications?unread_only=0&per_page=15&page=1' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
+## 56. Get one notification
+
+```bash
+curl --request GET 'http://localhost/asta-engineering/public/api/notifications/1' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
+## 57. Mark one notification as read
+
+```bash
+curl --request PATCH 'http://localhost/asta-engineering/public/api/notifications/1/read' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
+## 58. Mark all notifications as read
+
+```bash
+curl --request PATCH 'http://localhost/asta-engineering/public/api/notifications/read-all' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```
+
+## 59. Shared logout
+
+```bash
+curl --request POST 'http://localhost/asta-engineering/public/api/auth/logout' \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer PASTE_BEARER_TOKEN_HERE'
+```

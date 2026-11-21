@@ -26,4 +26,9 @@ class Site extends Model
     {
         return $this->hasMany(Equipment::class);
     }
+
+    public function inspections()
+    {
+        return $this->hasMany(Inspection::class);
+    }
 }

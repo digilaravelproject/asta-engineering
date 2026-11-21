@@ -30,6 +30,11 @@ class Customer extends Model
         return $this->hasMany(Site::class);
     }
 
+    public function apiTokens()
+    {
+        return $this->hasMany(ApiToken::class);
+    }
+
     public function getLogoUrlAttribute(): ?string
     {
         return $this->logo_path ? asset('storage/'.$this->logo_path) : null;

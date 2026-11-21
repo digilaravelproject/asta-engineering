@@ -28,6 +28,7 @@ class AuthController extends Controller
         $validated['email'] = Str::lower($validated['email']);
         $user = User::create($validated);
         $token = $this->createApiToken($user);
+        $user->setAttribute('role', 'admin');
 
         Mail::to($user->email)->send(new ActionMail(
             'Welcome to ASTA Engineering',
@@ -37,7 +38,7 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Admin account created successfully.',
-            'data' => ['admin' => $user, 'token' => $token, 'token_type' => 'Bearer'],
+            'data' => ['admin' => $user, 'role' => 'admin', 'token' => $token, 'token_type' => 'Bearer'],
         ], 201);
     }
 
@@ -56,6 +57,7 @@ class AuthController extends Controller
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
             return response()->json(['success' => false, 'message' => 'Invalid login credentials.'], 401);
         }
+        $user->setAttribute('role', 'admin');
 
         Mail::to($user->email)->send(new ActionMail(
             'Welcome Back to ASTA Engineering',
@@ -67,6 +69,7 @@ class AuthController extends Controller
             'message' => 'Login successful.',
             'data' => [
                 'admin' => $user,
+                'role' => 'admin',
                 'token' => $this->createApiToken($user),
                 'token_type' => 'Bearer',
             ],
@@ -198,6 +201,7 @@ class AuthController extends Controller
         $otp->update(['verified_at' => now(), 'consumed_at' => now()]);
         $user = User::where('email', $email)->firstOrFail();
         $token = $this->createApiToken($user);
+        $user->setAttribute('role', 'admin');
 
         Mail::to($user->email)->send(new ActionMail(
             'Welcome Back to ASTA Engineering',
@@ -209,6 +213,7 @@ class AuthController extends Controller
             'message' => 'Email verified. Login successful.',
             'data' => [
                 'admin' => $user,
+                'role' => 'admin',
                 'token' => $token,
                 'token_type' => 'Bearer',
             ],

@@ -27,6 +27,16 @@ class Staff extends Model
         return $this->belongsTo(User::class, 'admin_id');
     }
 
+    public function apiTokens()
+    {
+        return $this->hasMany(ApiToken::class);
+    }
+
+    public function inspections()
+    {
+        return $this->hasMany(Inspection::class, 'inspector_id');
+    }
+
     public function getProfileImageUrlAttribute(): ?string
     {
         return $this->profile_image_path ? asset('storage/'.$this->profile_image_path) : null;

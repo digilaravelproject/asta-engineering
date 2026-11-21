@@ -18,7 +18,7 @@ class AuthenticateApiToken
             return new JsonResponse(['success' => false, 'message' => 'Unauthenticated. Bearer token is required.'], 401);
         }
 
-        $token = ApiToken::with('user')
+        $token = ApiToken::with(['user', 'staff', 'customer'])
             ->where('token_hash', hash('sha256', $plainToken))
             ->first();
 
@@ -27,8 +27,19 @@ class AuthenticateApiToken
         }
 
         $token->forceFill(['last_used_at' => now()])->save();
-        $request->setUserResolver(fn () => $token->user);
+        $account = $token->account();
+        if (! $account) {
+            return new JsonResponse(['success' => false, 'message' => 'The account for this API token no longer exists.'], 401);
+        }
+
+        if (($token->staff && ! $token->staff->is_active) || ($token->customer && ! $token->customer->is_active)) {
+            return new JsonResponse(['success' => false, 'message' => 'This account is inactive.'], 403);
+        }
+
+        $request->setUserResolver(fn () => $account);
         $request->attributes->set('api_token', $token);
+        $request->attributes->set('account_type', $token->user_id ? 'admin' : ($token->staff_id ? $token->staff->role : 'user'));
+        $request->attributes->set('admin_id', $token->user_id ?: ($token->staff_id ? $token->staff->admin_id : $token->customer->admin_id));
 
         return $next($request);
     }
